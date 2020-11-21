@@ -1,38 +1,98 @@
 package banking;
 
-//import java.io.*;
+import java.sql.*;
 import java.util.*;
+//import java.io.*;
+import java.util.Scanner;
 
 public class Main {
-	public static void main(String[] args) {
-//		Thread t1 = new Thread(new MyThread(), "Thread 1");
-//		Thread t2 = new Thread(new MyThread(), "Thread 2");
-//		Thread t3 = new Thread(new MyThread(), "Thread 3");
-//		t1.start();
-//		t2.start();
-//		try {
-//			t1.join();
-//		}catch(InterruptedException e) {
-//			e.printStackTrace();
-//		}
-//		t3.start();
-		ThreadTest person1 = new ThreadTest(new Customer("Lazaros"));
-		ThreadTest person2 = new ThreadTest(new Customer("Psarokostas"));
-		person1.start();
-		person2.start();
+	public static void main(String[] args) throws Exception{
+		//Initialize SQL Connection
+		Connection conn;
+
+		Class.forName("com.mysql.cj.jdbc.Driver");
+		String url = "jdbc:mysql://localhost/JavaCustomer";
+		String user = "root";
+		String password = "";
+		
+		conn = DriverManager.getConnection(url, user, password);
+
+        
+        boolean input = true;
+        while(input){
+
+            System.out.println("Would you like to insert new customer? (yes/no/exit): ");
+    		// Using Scanner for Getting Input from User
+    		Scanner in = new Scanner(System.in);
+            String ans = in.next();
+            
+            //If user write yes asking for customer infos and save into db
+              if(ans.equals("yes")){
+            	  try{
+      				System.out.println("Firstname: ");
+      				Scanner fnameinput = new Scanner(System.in);
+      				String fname = fnameinput.nextLine();
+      				System.out.println("Lastname: ");
+      				Scanner lnameinput = new Scanner(System.in);
+      				String lname = fnameinput.nextLine();
+      				System.out.println("Balance: ");
+      				Scanner balanceinput = new Scanner(System.in);
+      				String balance = balanceinput.nextLine();
+
+      				Statement s = conn.createStatement();
+      				
+      				String query = "INSERT INTO Customers (fname, lname, balance) VALUES ('" + fname + "', '" + lname + "', '" + balance + "');";
+      			
+      				s.executeUpdate(query);
+      			}catch(Exception e) {
+      				e.printStackTrace();
+      			}
+              }
+              //If user write no then take all customers from db and start withdraw from their money
+              if(ans.equals("no")){
+            	  try {
+      				Statement s = conn.createStatement();
+      				
+      				String query = "SELECT * FROM Customers";
+      				
+      				ResultSet result = s.executeQuery(query);
+      						
+      				while(result.next()) {
+      					String fname = result.getString("fname");
+      					String lname = result.getString("lname");
+      					String balance = result.getString("balance");
+      					int balanc=Integer.parseInt(balance);
+
+      					ThreadTest person = new ThreadTest(new Customer(fname + " " + lname, balanc));
+      					person.start();
+      				}
+      			}catch(Exception e) {
+      				e.printStackTrace();
+      			}
+              }
+              //Terminate the program
+              if(ans.equals("exit")){
+            	  try {
+      				input = false;
+            	  }catch(Exception e) {
+      				e.printStackTrace();
+      			}
+              }
+        }
 	}
 }
 
 class Customer {
 	public String name;
-	public Customer(String name) {
+	public int balance;
+	public Customer(String name, int balance) {
 		this.name = name;
+		this.balance = balance;
 	}
 }
 
 class BankAccount{
 	static BankAccount account;
-	static int balance = 10000;
 	static Customer customer;
 	
 	public static BankAccount getAccount(Customer customer) {
@@ -44,27 +104,26 @@ class BankAccount{
 	}
 
 	public static int getBalance() {
-		return balance;
+		return customer.balance;
 	}
 	
 	public synchronized void withdraw(int balan) {
 		try {
-			if(balance >= balan) {
+			if(customer.balance >= balan) {
 				System.out.println(customer.name + " requested "
 									+ balan + " Euro");
 				Thread.sleep(1000);
-				balance -= balan;
+				customer.balance -= balan;
 				System.out.println(customer.name + " took "
-									+ balan + " Euro and now his balance is " + balance);
+									+ balan + " Euro and now his balance is " + customer.balance);
 			} else {
 				System.out.println(customer.name + " asked for "
 									+ balan + " Euro and his current balance is "
-									+ balance + " Cannot give this amount of money to him...");
+									+ customer.balance + " Cannot give this amount of money to him...");
 			}
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
-//		System.out.println(customer.name + " Current balance is " + balance + " Euro");
 	}
 }
 
@@ -75,32 +134,17 @@ class ThreadTest extends Thread implements Runnable{
 	}
 	
 	public void run() {
-		for(int i = 0; i <= 10; i++) {
+		for(int i = 0; i <= 100; i++) {
 			try {
 				BankAccount account = BankAccount.getAccount(customer);
 				Random rnd = new Random();
 				int num = (rnd.nextInt(20)+1)*10; 
 				account.withdraw(num);
 				Thread.sleep(1000);
+				
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
 		}
 	}
 }
-
-//class MyThread implements Runnable{
-//
-//	@Override
-//	public void run() {
-//		System.out.println("Active Threads: " + Thread.activeCount());
-//		System.out.println("Start Thread: " + Thread.currentThread().getName());
-//		try {
-//			Thread.sleep(3000);
-//		}catch(InterruptedException e) {
-//			e.printStackTrace();
-//		}
-//		System.out.println("End Thread: " + Thread.currentThread().getName());
-//	}
-//	
-//}
